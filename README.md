@@ -1,8 +1,41 @@
+# Access AICB
+You can access the full suite of **SimAI** tools on **GitHub** via  [**SimAI@github**](https://github.com/aliyun/SimAI)
+
+You can access AICB on **GitHub** via  [**AICB@github**](https://github.com/aliyun/aicb)
+
+You can also access AICB on **Gitee** via [**AICB@gitee**](https://gitee.com/ali-ais-hpn/aicb)
+
+Welcome to join the SimAI community chat groups, with the DingTalk group on the left and the WeChat group on the right.
+
+<div style="display: flex; justify-content: flex-start; align-items: center; gap: 20px; margin-left: 20px;">
+    <img src="./images/simai_dingtalk.jpg" alt="SimAI DingTalk" style="width: 300px; height: auto;">
+    <img src="./images/simai_wechat.jpg" alt="SimAI WeChat" style="width: 300px; height: auto;">
+</div>
+
+<br/>
+
 # Lastest News
-1. [2024/7] The first version of AICB is released. This version supports simulating workloads of GPT series, LLaMA, and Moe using the training frameworks of Megatron and DeepSpeed.
+[2024/9] AICB Version 1.1 Released.
+This version brings the following changes:
+
+Features
+1. Added result visualization functionality, which supports displaying results after physical cluster runs and also supports visualization of generated workload files. For details, see the Readme.
+2. Optimized the method for dividing communication groups, enhancing scalability.
+3. Added support for the AIOB computation pattern for moe group_gemm.
+Made some optimizations to the run_in_cluster script.
+
+Bug Fixes
+
+1. Fixed some calculation errors of BusBw in the log.
+2. Fixed abnormal computation time issues with AIOB during multi-machine runs.
+3. Fixed anomalies in comm_log statistics when computation_enable is on.
+4. Fixed potential hangs in the `run_suite` script.
+5. Fixed errors in generating simAI workload description files when using `tp=1`, `ep=1`.
+6. Fixed some msg size errors related to moe.
 
 # Table of Contents
 
+- [Access AICB](#access-aicb)
 - [Lastest News](#lastest-news)
 - [Table of Contents](#table-of-contents)
 - [AICB Overview](#aicb-overview)
@@ -25,6 +58,7 @@
   - [Running AICB with customized parameters](#running-aicb-with-customized-parameters)
     - [Running customized workloads on physical GPU clusters](#running-customized-workloads-on-physical-gpu-clusters)
     - [Generating customized workload description files](#generating-customized-workload-description-files)
+  - [Result Visualization](#result-visualization)
 - [Tutorial](#tutorial)
 - [Projects using AICB](#projects-using-aicb)
 
@@ -36,19 +70,19 @@ AICB (Artificial Intelligence Communication Benchmark), is a novel benchmark sui
 There are a lot of parameters that influence the communication and computation patterns, which are (1) model parameters (e.g., hidden_size, num_layers, seq_len, etc.) and (2) framework parameters (e.g., world size, parallelization strategies (TP, PP, DP, SP), zero level, reduce_bucket_size/allgather_bucket_size, etc.).
 For the sake of generality, we cover those typical settings using a smallest set of benchmarks rather than traversing all the combinations. To this end, we propose the benchmark suite as listed in the following table.
 **Users can directly run all the selected workloads selected in AICB, or run part of the workloads, or even generate their own workloads.**
-For more detailed information, please refer to [AICB_workload spec v1.0](workload/Workload_spec_v1.0.csv).
-| id  | Name      | Parameter_size | Hidden_size | Num_of_layers | Attention_heads | Sequence_length | FFN_hidden_size |
-|-----|-----------|----------------|-------------|---------------|-----------------|-----------------|-----------------|
-| 1   | GPT_7B    | 7B             | 4096        | 32            | 32              | 2048            | 16384           |
-| 2   | GPT_13B   | 13B            | 5120        | 40            | 32              | 2048            | 20480           |
-| 3   | GPT_22B   | 22B            | 6144        | 48            | 64              | 2048            | 24576           |
-| 4   | GPT_175B  | 175B           | 12288       | 96            | 96              | 2048            | 49152           |
-| 5   | GPT_13B   | 13B            | 5120        | 40            | 32              | 2048            | 20480           |
-| 6   | LLaMA_7B  | 7B             | 4096        | 32            | 32              | 4096            | 11008           |
-| 7   | LLaMA_7B  | 7B             | 4096        | 32            | 32              | 4096            | 11008           |
-| 8   | LLaMA_65B | 65B            | 8192        | 80            | 64              | 4096            | 28672           |
-| 9   | LLaMA_65B | 65B            | 8192        | 80            | 64              | 4096            | 28672           |
-| 10   | Mistral_8*7B | 56B            | 4096        | 32            | 32              | 1024            | 14336           |
+For more detailed information, please refer to [AICB_workload spec v1.1](workload/Workload_spec_v1.1.csv).
+| id  | Name          | Sequence_length | Framework | TP  | DP                    | PP  | SP     | Expert parallel number | Expert num | Zero_level |
+|:---:|:-------------:|:---------------:|:---------:|:---:|:---------------------:|:---:|:------:|:----------------------:|:----------:|:----------:|
+|  1  | LLaMA_7B      |      2048       | Megatron  |  1  |  world_size/(PP*TP)   |  1  |   -    |           -            |     -      |     -      |
+|  2  | GPT_13B       |      2048       | Megatron  |  2  |  world_size/(PP*TP)   |  1  | enable |           -            |     -      |     -      |
+|  3  | GPT_22B       |      2048       | Megatron  |  4  |  world_size/(PP*TP)   |  1  |   -    |           -            |     -      |     -      |
+|  4  | LLaMA_65B     |      4096       | Megatron  |  8  |  world_size/(PP*TP)   |  2  | enable |           -            |     -      |     -      |
+|  5  | GPT_175B      |      2048       | Megatron  |  8  |  world_size/(PP*TP)   |  8  | enable |           -            |     -      |     -      |
+|  6  | GPT_175B      |      2048       | Megatron  |  8  |  world_size/(PP*TP)   |  8  | disable|           -            |     -      |     -      |
+|  7  | Llama3_405B   |      8192       | Megatron  |  8  |  world_size/(PP*TP)   |  16 | enable |           -            |     -      |     -      |
+|  8  | LLaMA_7B      |      4096       | Deepspeed |  1  |      world_size       |  1  |   -    |           -            |     -      |     2      |
+|  9  | LLaMA_65B     |      4096       | Deepspeed |  1  |      world_size       |  1  |   -    |           -            |     -      |     3      |
+| 10  | Mistral_8*7B  |      2048       | Megatron  |  2  |  world_size/(PP*TP)   |  1  | enable |           8            |     8      |     -      |
 
 
 # Setup
@@ -57,7 +91,7 @@ You can follow the instrucitons below to quickly set up the environtments and ru
 
     a. To initiate actual communication tasks, ensure that the runtime environment has all necessary dependencies, such as CUDA and [PyTorch](https://pytorch.org), already installed. For specific usage examples, see [Physical Execution](#physical-execution)
 
-    b. To generate workload traffic patterns for large model parallel framework training, you can use a CPU-only environment. For specific usage examples, see [Generate Workloads ](#generate-workloads-for-simulation-simai )
+    b. To generate workload traffic patterns for large model parallel framework training, you can use a CPU-only environment. For specific usage examples, see [Generate Workloads ](#generate-workloads )
 
 2. Installation from deb package (for Ubuntu systems)
 
@@ -105,20 +139,22 @@ You can directly execute all the test cases provided in our AICB workload specif
 For the `Megatron parallel framework`, you can quickly start using the scripts/megatron_gpt.sh script file.
 ```bash
 sh scripts/megatron_gpt.sh \
--m 7 --world_size 8 --tp_num 2 --pp_num 1 \
---comm_frame Megatron --global_batch 16  \
---micro_batch 1 --seq_length 2048
+--nnodes 1 --node_rank 0 --nproc_per_node 8 --master_addr localhost --master_port 29500 \
+-m 7 --world_size 8 --tensor_model_parallel_size 2 --pipeline_model_parallel 1 \
+--frame Megatron --global_batch 16  \
+--micro_batch 1 --seq_length 2048 --swiglu --use_flash_attn --aiob_enable
 ```
 
 ### Running workloads for MOE
 For `Moe` , you can quickly start it using the [scripts/megatron_gpt.sh](scripts/megatron_gpt.sh) script file.
 ```bash
 sh scripts/megatron_gpt.sh \
--m moe --world_size 8 --tp_num 2 --pp_num 1 
---moe_enabled --expert_parallel_size 1  \
---comm_frame Megatron --global_batch 16  \
---num_moe_experts 2 --moe_router_topk 2 \
---micro_batch 1  --grouped_gemm 
+--nnodes 1 --node_rank 0 --nproc_per_node 8 --master_addr localhost --master_port 29500 \
+-m moe --world_size 8 --tensor_model_parallel_size 4 --pipeline_model_parallel 1 \
+--moe_enable --expert_model_parallel_size 1  \
+--frame Megatron --global_batch 16  \
+--num_experts 4 --moe_router_topk 2 \
+--micro_batch 1  --sp --grouped_gemm --aiob_enable --swiglu --use_flash_attn 
 ```
 
 ### Running workloads for DeepSpeed
@@ -136,13 +172,13 @@ In AICB, we can enable AIOB to embed the computation time into the workloads.
 For the Megatron parallel framework, the `--aiob_enable` option allows for capturing the computation time of each operation in the actual model. 
 If we do not set `--aiob_enable`, only fixed computation times can be applied. (Please refer to [the tutorial](training/tutorial.md))
 
-* Running workloads with computation times generated by AIOB. After running, we can get an extra computation desrcription file describing the computation times for the main computation kernels in the directory of `results/aiob_outputs`.
+* Running workloads with computation times generated by AIOB. After running, we can get an extra computation desrcription file describing the computation times for the main computation kernels in the directory of [results/aiob_outputs](results/aiob_outputs).
 Note that the computation times are obtained through the execution of computation kernels on the specific GPU.
 The following commands does not generate the computation descrition file, but also run the workload in the real GPU cluster.
 ```bash
 sh scripts/megatron_gpt.sh \
--m 7 --world_size 8 --tp_num 2 --pp_num 1 \
---comm_frame Megatron --global_batch 16  \
+-m 7 --world_size 8 --tensor_model_parallel_size 2 --pipeline_model_parallel 1 \
+--frame Megatron --global_batch 16  \
 --micro_batch 1 --seq_length 2048 \
 --swiglu --use_flash_attn  --aiob_enable 
 ```
@@ -151,8 +187,8 @@ Users can defined their own computation times or directly use the files we provi
 By specifying the computation description file with the `--comp_filepath` option, you can embed computation times before running the workload on a physical machine.
 ```bash
 sh scripts/megatron_gpt.sh \
--m 7 --world_size 8 --tp_num 2 --pp_num 1 \
---comm_frame Megatron --global_batch 16  --micro_batch 1 \
+-m 7 --world_size 8 --tensor_model_parallel_size 2 --pipeline_model_parallel 1 \
+--frame Megatron --global_batch 16  --micro_batch 1 \
 --seq_length 2048 --swiglu --use_flash_attn  \
 --aiob_enable  \
 --comp_filepath workload/aiob_inputs/Example.txt
@@ -170,8 +206,8 @@ Here, you can use the script [scripts/megatron_workload.sh](scripts/megatron_wor
 ```bash
 sh ./scripts/megatron_workload_with_aiob.sh \
 -m 7 --world_size 4096 \
---tp_num 2 --pp_num 1 \
---comm_frame Megatron --global_batch 8192 \
+--tensor_model_parallel_size 2 --pipeline_model_parallel 1 \
+--frame Megatron --global_batch 8192 \
 --micro_batch 1 --seq_length 4096 \
 --swiglu --use_flash_attn  --aiob_enable
 ```
@@ -179,29 +215,28 @@ sh ./scripts/megatron_workload_with_aiob.sh \
 
 ```bash
 sh ./scripts/megatron_workload_with_aiob.sh -m 7 \
---world_size 4096 --tp_num 2 --pp_num 1 \
---comm_frame Megatron --global_batch 8192 \
+--world_size 4096 --tensor_model_parallel_size 2 --pipeline_model_parallel 1 \
+--frame Megatron --global_batch 8192 \
 --micro_batch 1 --seq_length 4096 --swiglu \
 --use_flash_attn  --aiob_enable \
 --comp_filepath workload/aiob_inputs/Example.txt
 ```
 ### Generating the workload description files for Moe
-For the Moe, you can also use [scripts/megatron_workload_with_aiob.sh](scripts/megatron_workload_with_aiob.sh) to generate the corresponding model's workload file. 
+For the Moe, you can also use [scripts/megatron_workload_with_aiob.sh](scripts/workload_megatron.sh) to generate the corresponding model's workload file. 
 ```bash
-sh scripts/workload_moe.sh \
--mmoe --world_size 4096 --tp_num 2 --pp_num 1 --sp  --expert_parallel_size 1 \
---num_moe_experts 2 --moe_router_topk 2  \
---comm_frame Megatron --global_batch 8192  \
---micro_batch 1 --seq_length 1024 --swiglu \
---use_flash_attn  --aiob_enable \
---comp_filepath workload/aiob_inputs/Example.txt
+sh scripts/megatron_workload_with_aiob.sh \
+-m moe --world_size 512 --tensor_model_parallel_size 2 --pipeline_model_parallel 1 --sp  --ep 16 \
+--num_experts 64 --moe_router_topk 2 --moe_grouped_gemm --moe_enable  \
+--frame Megatron --global_batch 1024  \
+--micro_batch 1 --seq_length 4096 --swiglu \
+--use_flash_attn  --aiob_enable 
 ```
 
 ### Generating the workload description files for DeepSpeed
-For the `DeepSpeed` parallel framework, you can use [scripts/workload_deepspeed.sh](scripts/deepspeed_llama.sh) to generate the corresponding workload description file.
+For the `DeepSpeed` parallel framework, you can use [scripts/workload_deepspeed.sh](scripts/workload_deepspeed.sh) to generate the corresponding workload description file.
 
 ```bash
-sh ./scripts/deepspeed_llama.sh -m 7 
+sh ./scripts/workload_deepspeed.sh -m 7 
 ```
 
 ## Running AICB with customized parameters
@@ -217,8 +252,8 @@ torchrun \
 --nproc_per_node gpu \
 --master_addr $MASTER_ADDR \
 --master_port $MASTER_PORT \
-./aicb.py --comm_frame=Megatron --world_size=$((WORLD_SIZE*8)) --tp_num=$tp_num \
-  --micro_batch=$batch_size --global_batch=$((WORLD_SIZE*8*batch_size/tp_num)) --epoch_num=$epoch_num \
+./aicb.py --frame=Megatron --world_size=$((WORLD_SIZE*8)) --tensor_model_parallel_size=$tensor_model_parallel_size \
+  --micro_batch=$batch_size --global_batch=$((WORLD_SIZE*8*batch_size/tensor_model_parallel_size)) --epoch_num=$epoch_num \
   --num_layers=$num_layers --hidden_size=$hidden_size --ffn_hidden_size=$ffn_hidden_size --num_attention_heads=$num_attention_heads \
   $sp_enable --seq_len=$seq_len --vocab_size=$vocab_size --aiob_enable=$enable 
 ```
@@ -231,13 +266,40 @@ Here is an example:
 python -m workload_generator.AIOB_simAI_workload_generator \
 --world_size=32  --global_batch=64 --micro_batch=1 \
 --num_layers=8 --num_attention_heads=176 --hidden_size=5120   \
---tp_num=2 --seq_length=4096 --swiglu --ffn_hidden_size=16384  \
---moe_router_topk=4  --enable_sequence_parallel --expert_parallel_size=16 \
---num_moe_experts=64 --moe_grouped_gemm --moe_enabled
+--tensor_model_parallel_size=2 --seq_length=4096 --swiglu --ffn_hidden_size=16384  \
+--moe_router_topk=4  --enable_sequence_parallel --expert_model_parallel_size=16 \
+--num_experts=64 --moe_grouped_gemm --moe_enable --num_experts=4
 ```
 
+## Result Visualization
+
+This section provides an introduction to the result visualization feature.
+
+Supported Formats: The `.csv` files is supported for visualization, including results from physical cluster runs and workload files.
+
+Usage:
+Both Post-Run and generated workload files could be visualized. You can use the [visualize_script](visualize/generate.py) to visualize the results.
+Here is an example of a workload file:
+```bash
+python -m visualize.generate ./local_megatron_workload.csv only_workload
+```
+Post-Run results visualization examples:
+```bash
+python -m visualize.generate ./megatron_postrun.csv
+```
+The output results are located in the `results/visual_output` directory. You can view the output style through the `example.html` file located in this directory. The generated visualization file is an HTML file, which can be opened and viewed in a web browser,  just like this.
+![Scaling Graph](./images/readme_01.png)
+
+The results consist of several parts:
+- Communication Results Pie Chart: Shows the quantity and proportion of various collective communications under the given training hyperparameters.
+- Communication Type Scatter Plot: Displays the message size and communication count for each type of communication under the given training hyperparameters. For results from actual physical cluster runs, it will also show the corresponding BusBw.
+- CDF of Message Sizes in Collective Communications: Illustrates the distribution of message sizes across different types of collective communications.
+- Comm Group Scatter Plot: Shows the message size and communication count for different model training communication groups. For results from actual physical cluster runs, it will also show the corresponding BusBw.
+- Computation and Communication Timeline (Supported for Physical Cluster Runs Only): Displays the timeline of computation and communication events during AICB runs. The timeline can be dragged to observe specific computation and communication events.
+- Overall Computation and Communication Proportion (Supported for Physical Cluster Runs Only): Shows the proportion of total time spent on computation and communication during AICB runs.
+
 # Tutorial
-We provide a tutorial for users to quickly get started with AICB. [the tutorial](training/tutorial.md)
+We provide a tutorial for users to quickly get started with AICB. [the tutorial](./training/tutorial.md)
 
 # Projects using AICB
 Below are some of the projects where we have directly used AICB:
