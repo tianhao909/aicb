@@ -1,6 +1,6 @@
 共享
 您说：
-github fork过的仓库 ， 怎么保证和原仓库同步， 原仓库的更新怎么同步到fork的仓库里面来？  中文回答
+# github fork过的仓库 ， 怎么保证和原仓库同步， 原仓库的更新怎么同步到fork的仓库里面来？  中文回答
 ChatGPT 说：
 在 GitHub 上，如果你 fork 了一个仓库，并希望将原仓库的更新同步到你的 fork 中，可以按照以下步骤操作：
 
@@ -10,6 +10,8 @@ git remote add upstream <原仓库的URL>
 例如，如果原仓库是 https://github.com/original_owner/repository_name.git，你可以执行：
 
 git remote add upstream https://github.com/original_owner/repository_name.git
+
+git remote add upstream
 获取原仓库的最新更新： 使用 git fetch 从上游仓库获取最新的更新：
 
 git fetch upstream
