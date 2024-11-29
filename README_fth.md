@@ -441,9 +441,19 @@ sh ./scripts/megatron_workload_with_aiob.sh -m 7 \
 --micro_batch 1 --seq_length 4096 --swiglu \
 --use_flash_attn  --aiob_enable \
 --comp_filepath workload/aiob_inputs/Example.txt
+
+```bash
+sh ./scripts/megatron_workload_with_aiob.sh -m 7 \ # 调用生成 Megatron 工作负载的脚本，指定模型类型为 7
+--world_size 4096 --tensor_model_parallel_size 2 --pipeline_model_parallel 1 \ # 配置总进程数为 4096，张量模型并行规模为 2，流水线并行规模为 1
+--frame Megatron --global_batch 8192 \ # 指定框架为 Megatron，设置全局批大小为 8192
+--micro_batch 1 --seq_length 4096 --swiglu \ # 配置微批大小为 1，序列长度为 4096，并启用 swiglu 激活函数
+--use_flash_attn --aiob_enable \ # 使用 flash attention 优化，启用 aiob 模式
+--comp_filepath workload/aiob_inputs/Example.txt # 指定工作负载描述文件路径为 Example.txt
 ```
-### Generating the workload description files for Moe
-For the Moe, you can also use [scripts/megatron_workload_with_aiob.sh](scripts/workload_megatron.sh) to generate the corresponding model's workload file. 
+
+```
+### Generating the workload description files for Moe 生成 MoE 的工作负载描述文件 
+For the Moe, you can also use [scripts/megatron_workload_with_aiob.sh](scripts/workload_megatron.sh) to generate the corresponding model's workload file.  对于 MoE，可以使用上述脚本生成相应的模型工作负载文件
 ```bash
 sh scripts/megatron_workload_with_aiob.sh \
 -m moe --world_size 512 --tensor_model_parallel_size 2 --pipeline_model_parallel 1 --sp  --ep 16 \
@@ -453,18 +463,33 @@ sh scripts/megatron_workload_with_aiob.sh \
 --use_flash_attn  --aiob_enable 
 ```
 
-### Generating the workload description files for DeepSpeed
-For the `DeepSpeed` parallel framework, you can use [scripts/workload_deepspeed.sh](scripts/workload_deepspeed.sh) to generate the corresponding workload description file.
+```bash
+sh scripts/megatron_workload_with_aiob.sh \ # 调用生成 MoE 工作负载的脚本
+-m moe --world_size 512 --tensor_model_parallel_size 2 --pipeline_model_parallel 1 --sp --ep 16 \ # 配置模型类型为 moe，总进程数为 512，并设置参数
+--num_experts 64 --moe_router_topk 2 --moe_grouped_gemm --moe_enable \ # 配置专家数为 64，路由 topk 为 2，启用 grouped GEMM 和 MoE
+--frame Megatron --global_batch 1024 \ # 指定框架为 Megatron，全局批大小为 1024
+--micro_batch 1 --seq_length 4096 --swiglu \ # 配置微批大小为 1，序列长度为 4096，启用 swiglu 激活函数
+--use_flash_attn --aiob_enable # 使用 flash attention 优化，启用 aiob 模式
+```
+
+### Generating the workload description files for DeepSpeed  生成 DeepSpeed 的工作负载描述文件 
+For the `DeepSpeed` parallel framework, you can use [scripts/workload_deepspeed.sh](scripts/workload_deepspeed.sh) to generate the corresponding workload description file. 对于 DeepSpeed，可以使用上述脚本生成相应的工作负载描述文件
 
 ```bash
 sh ./scripts/workload_deepspeed.sh -m 7 
 ```
 
-## Running AICB with customized parameters
-In addition to quick start, you can also customize the model parameters in detail to run on physical clusters or generate the required workloads for simulation and analysis. For more detailed parameter descriptions and more Example, please refer to [the tutorial](training/tutorial.md).
+```bash
+sh ./scripts/workload_deepspeed.sh -m 7 # 调用生成 DeepSpeed 工作负载的脚本，指定模型类型为 7
+```
 
-### Running customized workloads on physical GPU clusters
-The current entry file for running custom cases is [aicb.py](aicb.py). By using this file, you can flexibly choose more parameters for tuning.
+## Running AICB with customized parameters 使用自定义参数运行 AICB
+In addition to quick start, you can also customize the model parameters in detail to run on physical clusters or generate the required workloads for simulation and analysis. For more detailed parameter descriptions and more Example, please refer to [the tutorial](training/tutorial.md).  除了快速启动，还可以详细自定义模型参数，用于物理集群运行或生成模拟分析所需的工作负载
+
+### Running customized workloads on physical GPU clusters 生成自定义工作负载描述文件
+The current entry file for running custom cases is [aicb.py](aicb.py). By using this file, you can flexibly choose more parameters for tuning. 同样，在生成工作负载时，可以自定义模型参数并修改生成的文件以生成自己的模拟工作负载文件
+
+
 ```bash
 # Megatron Example
 torchrun \
@@ -478,9 +503,25 @@ torchrun \
   --num_layers=$num_layers --hidden_size=$hidden_size --ffn_hidden_size=$ffn_hidden_size --num_attention_heads=$num_attention_heads \
   $sp_enable --seq_len=$seq_len --vocab_size=$vocab_size --aiob_enable=$enable 
 ```
-### Generating customized workload description files
-Similarly, when generating workloads, you can also customize the model training parameters and modifying the generated files to generate your own workload file for simulation. This can be achieved by using the following files:
-[generate custom description file](workload_generator/AIOB_simAI_workload_generator.py)
+
+```bash
+# Megatron 示例
+torchrun \ # 使用 torchrun 启动分布式任务
+--nnodes $WORLD_SIZE \ # 设置节点总数
+--node_rank $RANK \ # 指定当前节点的排名
+--nproc_per_node gpu \ # 每个节点运行的 GPU 进程数量
+--master_addr $MASTER_ADDR \ # 设置主节点的地址
+--master_port $MASTER_PORT \ # 设置主节点的端口号
+./aicb.py --frame=Megatron --world_size=$((WORLD_SIZE*8)) --tensor_model_parallel_size=$tensor_model_parallel_size \ # 运行框架为 Megatron，总进程数为节点数的 8 倍，指定张量模型并行大小
+  --micro_batch=$batch_size --global_batch=$((WORLD_SIZE*8*batch_size/tensor_model_parallel_size)) --epoch_num=$epoch_num \ # 配置微批大小，全局批大小和训练轮数
+  --num_layers=$num_layers --hidden_size=$hidden_size --ffn_hidden_size=$ffn_hidden_size --num_attention_heads=$num_attention_heads \ # 设置模型层数、隐藏层大小、前馈网络大小以及注意力头的数量
+  $sp_enable --seq_len=$seq_len --vocab_size=$vocab_size --aiob_enable=$enable # 其他配置参数，包括序列长度、词汇表大小和 AIOB 启用选项
+```
+
+
+### Generating customized workload description files  生成自定义工作负载描述文件
+Similarly, when generating workloads, you can also customize the model training parameters and modifying the generated files to generate your own workload file for simulation. This can be achieved by using the following files:  类似地，在生成工作负载时，您也可以自定义模型训练参数，并通过修改生成的文件为模拟生成自己的工作负载文件。这可以通过以下文件实现：
+[generate custom description file][生成自定义描述文件](workload_generator/AIOB_simAI_workload_generator.py)
 
 Here is an example:
 ```bash
@@ -492,7 +533,17 @@ python -m workload_generator.AIOB_simAI_workload_generator \
 --num_experts=64 --moe_grouped_gemm --moe_enable --num_experts=4
 ```
 
-## Result Visualization
+示例：
+```bash
+python -m workload_generator.AIOB_simAI_workload_generator \ # 调用 AIOB_simAI 工作负载生成器
+--world_size=32 --global_batch=64 --micro_batch=1 \ # 设置总进程数为 32，全局批大小为 64，微批大小为 1
+--num_layers=8 --num_attention_heads=176 --hidden_size=5120 \ # 设置模型层数为 8，注意力头数为 176，隐藏层大小为 5120
+--tensor_model_parallel_size=2 --seq_length=4096 --swiglu --ffn_hidden_size=16384 \ # 设置张量并行规模、序列长度、swiglu 激活函数和前馈网络大小
+--moe_router_topk=4 --enable_sequence_parallel --expert_model_parallel_size=16 \ # 配置 MoE 路由 top-k 值，启用序列并行以及专家模型并行规模
+--num_experts=64 --moe_grouped_gemm --moe_enable --num_experts=4 # 设置专家数量，启用 MoE 并行计算和分组 GEMM
+```
+
+## Result Visualization 结果可视化
 
 This section provides an introduction to the result visualization feature.
 
@@ -501,6 +552,13 @@ Supported Formats: The `.csv` files is supported for visualization, including re
 Usage:
 Both Post-Run and generated workload files could be visualized. You can use the [visualize_script](visualize/generate.py) to visualize the results.
 Here is an example of a workload file:
+
+本节介绍结果可视化功能。
+支持的格式：`.csv` 文件支持可视化，包括物理集群运行结果和工作负载文件。
+使用方法：
+生成的工作负载文件和运行结果都可以可视化。您可以使用 [可视化脚本](visualize/generate.py) 来生成可视化结果。
+示例（工作负载文件）：
+
 ```bash
 python -m visualize.generate ./local_megatron_workload.csv only_workload
 ```
@@ -508,7 +566,18 @@ Post-Run results visualization examples:
 ```bash
 python -m visualize.generate ./megatron_postrun.csv
 ```
-The output results are located in the `results/visual_output` directory. You can view the output style through the `example.html` file located in this directory. The generated visualization file is an HTML file, which can be opened and viewed in a web browser,  just like this.
+
+
+```bash
+python -m visualize.generate ./local_megatron_workload.csv only_workload # 可视化指定工作负载文件
+```
+示例（运行结果）：
+```bash
+python -m visualize.generate ./megatron_postrun.csv # 可视化运行后结果文件
+```
+
+
+The output results are located in the `results/visual_output` directory. You can view the output style through the `example.html` file located in this directory. The generated visualization file is an HTML file, which can be opened and viewed in a web browser,  just like this. 输出结果位于 `results/visual_output` 目录下。您可以通过该目录中的 `example.html` 文件查看输出样式。生成的可视化文件为 HTML 格式，可以通过 Web 浏览器打开和查看，如下所示：
 ![Scaling Graph](./images/readme_01.png)
 
 The results consist of several parts:
@@ -519,10 +588,20 @@ The results consist of several parts:
 - Computation and Communication Timeline (Supported for Physical Cluster Runs Only): Displays the timeline of computation and communication events during AICB runs. The timeline can be dragged to observe specific computation and communication events.
 - Overall Computation and Communication Proportion (Supported for Physical Cluster Runs Only): Shows the proportion of total time spent on computation and communication during AICB runs.
 
-# Tutorial
-We provide a tutorial for users to quickly get started with AICB. [the tutorial](./training/tutorial.md)
+可视化结果包括以下部分：
+- **通信结果饼图**：显示在给定训练超参数下，各种集体通信的数量和占比。
+- **通信类型散点图**：展示了在给定训练超参数下，各种通信类型的消息大小和通信次数。对于实际物理集群运行的结果，还会显示对应的总线带宽（BusBw）。
+- **集体通信消息大小的累积分布函数（CDF）**：展示了不同类型集体通信中消息大小的分布。
+- **通信组散点图**：展示了不同模型训练通信组的消息大小和通信次数。对于实际物理集群运行的结果，还会显示对应的总线带宽（BusBw）。
+- **计算与通信时间线（仅支持物理集群运行结果）**：显示了 AICB 运行期间计算和通信事件的时间线。时间线可以拖动以观察特定的计算和通信事件。
+- **计算与通信总体比例（仅支持物理集群运行结果）**：显示了 AICB 运行期间计算与通信所占用总时间的比例。
 
-# Projects using AICB
+# Tutorial
+We provide a tutorial for users to quickly get started with AICB. [the tutorial]我们提供了一个教程，帮助用户快速上手 AICB。[教程链接](./training/tutorial.md)
+
+# Projects using AICB 使用 AICB 的项目
 Below are some of the projects where we have directly used AICB:
-* AICB is part of the SimAI project which is led by Alibaba Cloud. Researchers who use AICB can cite our paper "SimAI: Unifying Architecture Design and Performance Tunning for Large-Scale Large Language Model Training with Scalability and Precision" (NSDI’25).
+* AICB is part of the SimAI project which is led by Alibaba Cloud. Researchers who use AICB can cite our paper "SimAI: Unifying Architecture Design and Performance Tunning for Large-Scale Large Language Model Training with Scalability and Precision" (NSDI’25). 
+以下是一些直接使用 AICB 的项目：
+* AICB 是由阿里云领导的 SimAI 项目的一部分。使用 AICB 的研究人员可以引用我们的论文《SimAI：融合架构设计与性能调优的大规模大型语言模型训练的可扩展性与精度》(NSDI’25)。
 
