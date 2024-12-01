@@ -32,6 +32,13 @@ For a local environment, you will need Python >= 3.8, CUDA Version >= 11.8, PyTo
 在本地环境中设置  
 在本地环境中，您需要 Python >= 3.8、CUDA 版本 >= 11.8、PyTorch >= 2.0.0 和 NVIDIA APEX。  
 
+
+ nvcc -V
+Cuda compilation tools, release 12.4, V12.4.131
+Build cuda_12.4.r12.4/compiler.34097967_0
+>>> print(torch.__version__)
+2.5.1+cu124
+
 ## Using Official Docker
 You can also create the required Docker environment using [NGC's PyTorch container ](https://ngc.nvidia.com/catalog/containers/nvidia:pytorch), where pytorch:xx.xx should be >= pytorch:23.08.
 使用官方 Docker  
@@ -48,6 +55,8 @@ docker run --gpus all -it --rm -v /path/to/AICBench:/workspace/AICBench nvcr.io/
 docker ps
 dokcer stop [CONTAINER_ID或NAME] 
 dokcer stop my-nginx
+
+
 
 # Basic Usage 基本用法 
 ## Physical Execution 物理机运行  
@@ -95,6 +104,24 @@ export RANK=0
 
 sh ./scripts/megatron_gpt.sh \
 -m 13 --world_size 8 --tensor_model_parallel_size 8 --pipeline_model_parallel 1 \
+--frame Megatron --global_batch 2  \
+--micro_batch 1 --seq_length 4096 \
+--swiglu --use_flash_attn  --aiob_enable  
+```
+
+pip install apex
+conda activate /root/anaconda3/envs/vllm_py310
+
+``` bash
+export MASTER_ADDR=127.0.0.1
+export MASTER_PORT=23089
+export WORLD_SIZE=1
+export RANK=0
+
+
+
+sh ./scripts/megatron_gpt.sh \
+-m 13 --world_size 4 --tensor_model_parallel_size 4 --pipeline_model_parallel 1 \
 --frame Megatron --global_batch 2  \
 --micro_batch 1 --seq_length 4096 \
 --swiglu --use_flash_attn  --aiob_enable  
