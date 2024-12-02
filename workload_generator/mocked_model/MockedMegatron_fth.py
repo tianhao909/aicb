@@ -509,32 +509,32 @@ class GroupedMLP(MockedModel):  # 定义一个GroupedMLP类，继承自MockedMod
         return workloads  # 返回反向传播的工作负载
 
 
-class SequentialMLP(MockedModel):
-    def __init__(self):
-        print("Not implement yet!")
-        pass
+class SequentialMLP(MockedModel):  # 定义一个名为 SequentialMLP 的类，继承自 MockedModel 类
+    def __init__(self):  # 初始化方法
+        print("Not implement yet!")  # 打印未实现的消息
+        pass  # 占位符，当前没有实现任何逻辑
 
 
-class MegatronTransformorLayer(MockedModel):
-    def __init__(
+class MegatronTransformorLayer(MockedModel):  # 定义一个名为 MegatronTransformorLayer 的类，继承自 MockedModel 类
+    def __init__(  # 初始化方法，包含多个输入参数
         self,
-        hidden_size,
-        ffn_hidden_size,
-        tp,
-        seq_len,
-        batch_size,
-        num_attention_heads,
-        layer_id,
-        expert_model_parallel_size,
-        moe_router_topk,
-        num_experts,
-        moe_grouped_gemm=True,
-        sequence_parallel_enabled=True,
-        computation_enable=False,
-        add_bias_linear=False,
-        moe_enable=False,
+        hidden_size,  # 模型的隐藏层大小
+        ffn_hidden_size,  # 前馈神经网络的隐藏层大小
+        tp,  # 张量并行度
+        seq_len,  # 序列长度
+        batch_size,  # 批大小
+        num_attention_heads,  # 注意力头数
+        layer_id,  # 当前层的ID
+        expert_model_parallel_size,  # 专家模型并行度
+        moe_router_topk,  # MoE路由选择的topk个专家
+        num_experts,  # MoE的专家数量
+        moe_grouped_gemm=True,  # 是否启用MoE分组GEMM
+        sequence_parallel_enabled=True,  # 是否启用序列并行
+        computation_enable=False,  # 是否启用计算
+        add_bias_linear=False,  # 是否添加线性偏置
+        moe_enable=False,  # 是否启用MoE
     ):
-        self.attention = MegatronAttention(
+        self.attention = MegatronAttention(  # 定义一个MegatronAttention对象，初始化时传入多个参数
             num_attention_heads,
             hidden_size,
             tp,
@@ -545,10 +545,10 @@ class MegatronTransformorLayer(MockedModel):
             computation_enable,
             add_bias_linear,
         )
-        self.pre_mlp_layernorm = FusedLayernorm(hidden_size)
-        self.post_attention_layernorm_bias = MockedParam((hidden_size, 1))
-        if moe_enable and moe_grouped_gemm:
-            self.mlp = GroupedMLP(
+        self.pre_mlp_layernorm = FusedLayernorm(hidden_size)  # 定义一个层归一化层
+        self.post_attention_layernorm_bias = MockedParam((hidden_size, 1))  # 定义一个假参数用于后续层归一化
+        if moe_enable and moe_grouped_gemm:  # 如果启用了MoE并且分组GEMM启用
+            self.mlp = GroupedMLP(  # 定义一个GroupedMLP对象，传入相关参数
                 batch_size,
                 hidden_size,
                 tp,
@@ -560,7 +560,7 @@ class MegatronTransformorLayer(MockedModel):
                 layer_id,
             )
         else:
-            self.mlp = MegatronMlp(
+            self.mlp = MegatronMlp(  # 否则定义一个MegatronMlp对象
                 hidden_size,
                 ffn_hidden_size,
                 tp,
@@ -572,73 +572,73 @@ class MegatronTransformorLayer(MockedModel):
                 add_bias_linear,
             )
 
-    def forward(self):
-        workloads = Workload()
-        workloads.extend(self.attention.forward())
-        workloads.extend(self.mlp.forward())
-        assert all([isinstance(workload, LogItem) for workload in workloads.workload])
-        return workloads
+    def forward(self):  # 前向传播方法
+        workloads = Workload()  # 创建一个空的 Workload 对象
+        workloads.extend(self.attention.forward())  # 调用attention层的前向传播并将其工作负载添加到workloads中
+        workloads.extend(self.mlp.forward())  # 调用mlp层的前向传播并将其工作负载添加到workloads中
+        assert all([isinstance(workload, LogItem) for workload in workloads.workload])  # 确保每个工作负载都是LogItem类型
+        return workloads  # 返回工作负载
 
-    def backward(self):
-        workloads = Workload()
-        workloads.extend(self.attention.backward())
-        workloads.extend(self.mlp.backward())
-        assert all([isinstance(workload, LogItem) for workload in workloads.workload])
-        return workloads
+    def backward(self):  # 反向传播方法
+        workloads = Workload()  # 创建一个空的 Workload 对象
+        workloads.extend(self.attention.backward())  # 调用attention层的反向传播并将其工作负载添加到workloads中
+        workloads.extend(self.mlp.backward())  # 调用mlp层的反向传播并将其工作负载添加到workloads中
+        assert all([isinstance(workload, LogItem) for workload in workloads.workload])  # 确保每个工作负载都是LogItem类型
+        return workloads  # 返回工作负载
 
 
-class MegatronEmbedding(MockedModel):
-    def __init__(self, padded_vocab_size, hidden_size, tp, seq_len, batch_size):
-        self.name = "embedding_layer"
-        self.layer_id = 0
-        num_embedding_per_partition = divide(padded_vocab_size, tp)
-        self.word_embedding = MockedParam(
+class MegatronEmbedding(MockedModel):  # 定义一个 MegatronEmbedding 类，继承自 MockedModel
+    def __init__(self, padded_vocab_size, hidden_size, tp, seq_len, batch_size):  # 初始化方法
+        self.name = "embedding_layer"  # 设置层的名称
+        self.layer_id = 0  # 设置层的ID为0
+        num_embedding_per_partition = divide(padded_vocab_size, tp)  # 根据张量并行度划分词汇表的大小
+        self.word_embedding = MockedParam(  # 定义一个 MockedParam 对象表示词嵌入
             (4 * num_embedding_per_partition, hidden_size), name=self.name
         )
-        self.tensor_model_parallel_size = tp
+        self.tensor_model_parallel_size = tp  # 设置张量并行度
         # TODO : position embedding shape is max_sequence_length not sequence_length
-        self.position_embedding = MockedParam((seq_len, hidden_size))
-        self.comm_size = 2 * batch_size * seq_len * hidden_size
+        self.position_embedding = MockedParam((seq_len, hidden_size))  # 定义位置嵌入
+        self.comm_size = 2 * batch_size * seq_len * hidden_size  # 计算通信大小
 
-    def forward(self):
-        workloads = Workload()
-        if self.tensor_model_parallel_size > 1:
-            workloads.append(
+    def forward(self):  # 前向传播方法
+        workloads = Workload()  # 创建一个空的 Workload 对象
+        if self.tensor_model_parallel_size > 1:  # 如果张量并行度大于1
+            workloads.append(  # 向工作负载列表中添加一个通信项
                 LogItem(
-                    comm_type=CommType.all_reduce,
-                    comm_group=CommGroup.tp_group,
-                    comm_group_size=self.tensor_model_parallel_size,
-                    msg_size=self.comm_size,
-                    stage="forward.MegatronEmbedding",
+                    comm_type=CommType.all_reduce,  # 设置通信类型为all_reduce
+                    comm_group=CommGroup.tp_group,  # 设置通信组为张量并行组
+                    comm_group_size=self.tensor_model_parallel_size,  # 设置通信组大小
+                    msg_size=self.comm_size,  # 设置消息大小
+                    stage="forward.MegatronEmbedding",  # 设置当前阶段为前向传播
                 )
             )
-        return workloads
+        return workloads  # 返回工作负载
 
-    def backward(self):
-        workloads = Workload()
-        if self.tensor_model_parallel_size > 1:
-            workloads.append(
+    def backward(self):  # 反向传播方法
+        workloads = Workload()  # 创建一个空的 Workload 对象
+        if self.tensor_model_parallel_size > 1:  # 如果张量并行度大于1
+            workloads.append(  # 向工作负载列表中添加一个通信项
                 LogItem(
-                    comm_type=CommType.all_reduce,
-                    comm_group=CommGroup.tp_group,
-                    comm_group_size=self.tensor_model_parallel_size,
-                    msg_size=self.comm_size,
-                    stage="backward.MegatronEmbedding",
+                    comm_type=CommType.all_reduce,  # 设置通信类型为all_reduce
+                    comm_group=CommGroup.tp_group,  # 设置通信组为张量并行组
+                    comm_group_size=self.tensor_model_parallel_size,  # 设置通信组大小
+                    msg_size=self.comm_size,  # 设置消息大小
+                    stage="backward.MegatronEmbedding",  # 设置当前阶段为反向传播
                 )
             )
-        return workloads
+        return workloads  # 返回工作负载
 
 
-class MegatronModel(MockedModel):
-    def __init__(self, config):
-        self.embedding = MegatronEmbedding(
+class MegatronModel(MockedModel):  # 定义一个 MegatronModel 类，继承自 MockedModel
+    def __init__(self, config):  # 初始化方法，接收一个配置对象
+        self.embedding = MegatronEmbedding(  # 创建一个 MegatronEmbedding 对象
             config.padded_vocab_size,
             config.hidden_size,
             config.tensor_model_parallel_size,
             config.seq_length,
             config.micro_batch,
         )
-        self.layers = [
+        self.layers = [  # 创建一个层列表，每一层是一个 MegatronTransformorLayer 对象
             MegatronTransformorLayer(
                 config.hidden_size,
                 config.ffn_hidden_size,
@@ -656,9 +656,9 @@ class MegatronModel(MockedModel):
                 config.add_bias_linear,
                 config.moe_enable,
             )
-            for i in range(config.num_layers)
+            for i in range(config.num_layers)  # 根据层数配置，创建多个 MegatronTransformorLayer 对象
         ]
-        self.final_norm = MegatronColumnLinear(
+        self.final_norm = MegatronColumnLinear(  # 创建一个 MegatronColumnLinear 对象，表示模型的最后一层
             config.hidden_size,
             config.padded_vocab_size,
             config.tensor_model_parallel_size,
@@ -671,18 +671,19 @@ class MegatronModel(MockedModel):
             add_bias_linear=config.add_bias_linear,
         )
 
-    def forward(self):
-        workloads = Workload()
-        workloads.extend(self.embedding.forward())
-        for layer in self.layers:
+    def forward(self):  # 前向传播方法
+        workloads = Workload()  # 创建一个空的 Workload 对象
+        workloads.extend(self.embedding.forward())  # 添加嵌入层的前向传播工作负载
+        for layer in self.layers:  # 对每一层，调用前向传播并添加工作负载
             workloads.extend(layer.forward())
-        assert all([isinstance(workload, LogItem) for workload in workloads.workload])
-        return workloads
+        assert all([isinstance(workload, LogItem) for workload in workloads.workload])  # 确保每个工作负载是LogItem类型
+        return workloads  # 返回工作负载
 
-    def backward(self):
-        workloads = Workload()
-        for layer in self.layers[::-1]:
+    def backward(self):  # 反向传播方法
+        workloads = Workload()  # 创建一个空的 Workload 对象
+        for layer in self.layers[::-1]:  # 从最后一层开始，逆序调用每一层的反向传播
             workloads.extend(layer.backward())
-        workloads.extend(self.embedding.backward())
-        assert all([isinstance(workload, LogItem) for workload in workloads.workload])
-        return workloads
+        workloads.extend(self.embedding.backward())  # 添加嵌入层的反向传播工作负载
+        assert all([isinstance(workload, LogItem) for workload in workloads.workload])  # 确保每个工作负载是LogItem类型
+        return workloads  # 返回工作负载
+
